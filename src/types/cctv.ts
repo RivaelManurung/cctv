@@ -35,6 +35,16 @@ export type StreamType = (typeof STREAM_TYPES)[number];
 export const CAMERA_STATUSES = ["online", "offline", "unknown"] as const;
 export type CameraStatus = (typeof CAMERA_STATUSES)[number];
 
+/**
+ * Values for the feed-availability filter.
+ *
+ * This is deliberately *not* a camera status: `unavailable` means we have no
+ * feed of our own to show for the camera (see `hasEmbeddedFeed`), which is a
+ * different axis from whether the operator's camera is currently up.
+ */
+export const FEED_FILTERS = ["unavailable"] as const;
+export type FeedFilter = (typeof FEED_FILTERS)[number];
+
 export const REGION_SLUGS = [
   "sumatera",
   "jawa",
@@ -238,6 +248,8 @@ export interface CCTVFilters {
   district: string;
   category: string;
   status: string;
+  /** Feed-availability axis. See {@link FEED_FILTERS}. */
+  feed: string;
   source: string;
   region: string;
   featured: boolean;

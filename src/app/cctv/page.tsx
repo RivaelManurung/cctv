@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 import { CCTVEmptyState } from "@/components/cctv/cctv-empty-state";
+import { FeedFilter } from "@/components/cctv/cctv-feed-filter";
 import {
   ActiveFilterChips,
   CCTVFilters,
@@ -19,8 +20,10 @@ import { Button } from "@/components/ui/button";
 import { realCCTVData } from "@/data/cctv";
 import {
   countActiveFilters,
+  getFeedFilterCounts,
   parseFilters,
   queryCCTV,
+  searchCCTV,
   type RawSearchParams,
 } from "@/lib/cctv-query";
 import { breadcrumbJsonLd, serializeJsonLd } from "@/lib/jsonld";
@@ -66,6 +69,13 @@ export default async function CCTVExplorerPage({
   const { cameras, total, page, pageCount } = queryCCTV(realCCTVData, filters);
   const stats = getStats(realCCTVData);
   const activeCount = countActiveFilters(filters);
+
+  // The availability counts are scoped by the search term, exactly like the
+  // sidebar facets, so a button never advertises cameras the query excludes.
+  const feedCounts = getFeedFilterCounts(
+    filters.q.trim() ? searchCCTV(realCCTVData, filters.q) : realCCTVData,
+    filters,
+  );
 
   const jsonLd = breadcrumbJsonLd([
     { name: "Beranda", url: absoluteUrl("/") },
@@ -136,6 +146,8 @@ export default async function CCTVExplorerPage({
           <div className="min-w-0 flex-1">
             <div className="mb-5 space-y-3">
               <CCTVSearch value={filters.q} />
+
+              <FeedFilter counts={feedCounts} />
 
               <div className="flex flex-wrap items-center gap-3">
                 <FilterSheet filters={filters} activeCount={activeCount} />
