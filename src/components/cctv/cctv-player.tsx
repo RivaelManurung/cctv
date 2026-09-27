@@ -12,7 +12,14 @@ import {
   VolumeX,
   WifiOff,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { CameraPoster } from "@/components/cctv/camera-poster";
 import { LiveBadge, SampleBadge, StreamTypeBadge } from "@/components/cctv/cctv-status";
@@ -501,7 +508,14 @@ export function CCTVPlayer({
           </Tooltip>
         ) : null}
 
-        {actions}
+        {/*
+          The host injects its controls as one slot. When the host is a Server
+          Component, Next resolves that element to a `React.lazy` client
+          reference, which React cannot key-check — so it reaches this control
+          row as an unkeyed child and warns. Keying the slot here spares every
+          host from having to know that.
+        */}
+        {actions ? <Fragment key="actions">{actions}</Fragment> : null}
 
         {sourceHref ? (
           <Tooltip>
