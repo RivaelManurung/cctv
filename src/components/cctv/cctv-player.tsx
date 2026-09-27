@@ -32,6 +32,7 @@ import {
 import { useHlsStream } from "@/hooks/use-hls-stream";
 import { useInView } from "@/hooks/use-in-view";
 import { useMounted } from "@/hooks/use-mounted";
+import { hasEmbeddedFeed } from "@/lib/cctv-query";
 import { cn, sanitizeExternalUrl, toYouTubeEmbed } from "@/lib/utils";
 import type { CCTV } from "@/types/cctv";
 
@@ -55,7 +56,7 @@ export interface CCTVPlayerProps {
 type Mode = "embed" | "external" | "offline";
 
 function resolveMode(camera: CCTV): Mode {
-  if (camera.streamType === "external" || !camera.streamUrl) return "external";
+  if (!hasEmbeddedFeed(camera)) return "external";
   if (camera.status === "offline") return "offline";
   return "embed";
 }

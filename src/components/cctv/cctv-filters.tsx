@@ -339,6 +339,9 @@ function buildChips(filters: CCTVFiltersState): ActiveChip[] {
       value: STATUS_LABELS[filters.status] ?? filters.status,
     });
   }
+  if (filters.feed === "unavailable") {
+    chips.push({ key: "feed", label: "Feed", value: "Belum tersedia" });
+  }
   if (filters.source) {
     chips.push({
       key: "source",

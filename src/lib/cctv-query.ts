@@ -1,6 +1,7 @@
 import { provinces } from "@/data/provinces";
 import {
   CCTV_CATEGORIES,
+  FEED_FILTERS,
   SORT_OPTIONS,
   type CCTV,
   type CCTVFilters,
@@ -27,6 +28,7 @@ export const EMPTY_FILTERS: CCTVFilters = {
   district: "",
   category: "",
   status: "",
+  feed: "",
   source: "",
   region: "",
   featured: false,
@@ -59,6 +61,7 @@ function single(value: string | string[] | undefined): string {
 export function parseFilters(raw: RawSearchParams): CCTVFilters {
   const category = single(raw.category);
   const status = single(raw.status);
+  const feed = single(raw.feed);
   const sort = single(raw.sort);
   const page = Number.parseInt(single(raw.page), 10);
 
@@ -71,6 +74,7 @@ export function parseFilters(raw: RawSearchParams): CCTVFilters {
       ? category
       : "",
     status: ["online", "offline", "unknown"].includes(status) ? status : "",
+    feed: (FEED_FILTERS as readonly string[]).includes(feed) ? feed : "",
     source: single(raw.source),
     region: single(raw.region),
     featured: single(raw.featured) === "true" || single(raw.featured) === "1",
@@ -97,6 +101,7 @@ export function buildQueryString(filters: Partial<CCTVFilters>): string {
   set("district", filters.district || undefined);
   set("category", filters.category || undefined);
   set("status", filters.status || undefined);
+  set("feed", filters.feed || undefined);
   set("source", filters.source || undefined);
   set("region", filters.region || undefined);
   if (filters.featured) params.set("featured", "true");
@@ -128,6 +133,7 @@ export function countActiveFilters(filters: CCTVFilters): number {
   if (filters.district) count += 1;
   if (filters.category) count += 1;
   if (filters.status) count += 1;
+  if (filters.feed) count += 1;
   if (filters.source) count += 1;
   if (filters.region) count += 1;
   if (filters.featured) count += 1;
@@ -231,6 +237,18 @@ export function searchCCTV(cameras: CCTV[], query: string): CCTV[] {
  * ------------------------------------------------------------------ */
 
 /**
+ * True when we have a feed of our own to show for this camera.
+ *
+ * `streamType: "external"` means the operator publishes the camera on its own
+ * portal, so we only link to it — there is nothing to embed and nothing the
+ * player can render. The player, the availability filter and the "Sumber Resmi"
+ * badge all derive from this one predicate so they can never disagree.
+ */
+export function hasEmbeddedFeed(camera: CCTV): boolean {
+  return camera.streamType !== "external" && Boolean(camera.streamUrl);
+}
+
+/**
  * Applies every non-search filter. Pure and referentially transparent so it
  * can be memoised on the filter object.
  */
@@ -246,6 +264,7 @@ export function filterCCTV(cameras: CCTV[], filters: CCTVFilters): CCTV[] {
     if (filters.district && camera.district !== filters.district) return false;
     if (filters.category && camera.category !== filters.category) return false;
     if (filters.status && camera.status !== filters.status) return false;
+    if (filters.feed === "unavailable" && hasEmbeddedFeed(camera)) return false;
     if (filters.source && camera.sourceSlug !== filters.source) return false;
     if (filters.featured && !camera.isFeatured) return false;
     return true;
@@ -450,4 +469,35 @@ export function getFacets(
       labelResolvers.source,
     ),
   };
+}
+
+export interface FeedFilterCounts {
+  online: number;
+  offline: number;
+  unavailable: number;
+}
+
+/**
+ * Counts for the availability quick-filter.
+ *
+ * Derived the same way as the sidebar facets: the availability axis itself is
+ * cleared, so each button reports what you would actually get by picking it,
+ * while every other active filter still applies.
+ *
+ * `cameras` should already have the search query applied.
+ */
+export function getFeedFilterCounts(
+  cameras: CCTV[],
+  filters: CCTVFilters,
+): FeedFilterCounts {
+  const scoped = filterCCTV(cameras, { ...filters, status: "", feed: "" });
+  const counts: FeedFilterCounts = { online: 0, offline: 0, unavailable: 0 };
+
+  for (const camera of scoped) {
+    if (camera.status === "online") counts.online += 1;
+    else if (camera.status === "offline") counts.offline += 1;
+    if (!hasEmbeddedFeed(camera)) counts.unavailable += 1;
+  }
+
+  return counts;
 }
