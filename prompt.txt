@@ -1,0 +1,1816 @@
+# CCTV INDONESIA — Production-Grade CCTV Aggregator
+
+Build a **production-quality, highly polished CCTV Indonesia web application** using **Next.js + TypeScript**.
+
+The application is a frontend-only platform that aggregates publicly available CCTV / traffic camera sources across Indonesia.
+
+The goal is to make the application feel like a real commercial product, **not a simple CRUD demo or static HTML page**.
+
+---
+
+# 1. TECHNOLOGY STACK
+
+Use:
+
+- Next.js latest stable
+- TypeScript
+- App Router
+- React
+- Tailwind CSS
+- shadcn/ui
+- Lucide React
+- Leaflet + React Leaflet OR MapLibre GL JS for maps
+- Zustand for client-side state where appropriate
+- Zod for validating static CCTV data
+- date-fns for date/time formatting
+- next-themes for dark/light mode
+- Sonner for notifications
+
+Do NOT use:
+
+- Database
+- Prisma
+- Supabase
+- Firebase
+- Laravel
+- Express
+- Separate backend
+- Authentication server
+- Server-side database
+- CMS
+
+Everything must work from the frontend.
+
+---
+
+# 2. DATA ARCHITECTURE
+
+Since there is no database, create a strongly typed static data architecture.
+
+Use:
+
+```text
+src/
+├── data/
+│   ├── cctv.ts
+│   ├── provinces.ts
+│   ├── cities.ts
+│   ├── categories.ts
+│   └── sources.ts
+```
+
+CCTV data must be represented using TypeScript interfaces.
+
+Example:
+
+```ts
+export interface CCTV {
+  id: string
+  name: string
+  slug: string
+
+  province: string
+  provinceSlug: string
+
+  city: string
+  citySlug: string
+
+  district?: string
+  address?: string
+
+  latitude: number
+  longitude: number
+
+  category:
+    | "traffic"
+    | "road"
+    | "intersection"
+    | "highway"
+    | "public-space"
+    | "port"
+    | "airport"
+    | "other"
+
+  streamType:
+    | "hls"
+    | "mjpeg"
+    | "iframe"
+    | "image"
+    | "youtube"
+    | "external"
+
+  streamUrl?: string
+  thumbnailUrl?: string
+
+  sourceName: string
+  sourceUrl: string
+
+  status: "online" | "offline" | "unknown"
+
+  description?: string
+
+  isFeatured?: boolean
+
+  tags?: string[]
+
+  lastChecked?: string
+
+  metadata?: {
+    direction?: string
+    road?: string
+    operator?: string
+  }
+}
+```
+
+DO NOT scatter CCTV objects throughout components.
+
+All cameras must come from the centralized data layer.
+
+---
+
+# 3. IMPORTANT DATA RULE
+
+Do not invent fake live CCTV URLs.
+
+If a real public CCTV stream is unavailable, use:
+
+```ts
+streamType: "external"
+```
+
+and provide the official source URL.
+
+Clearly distinguish:
+
+```text
+LIVE
+EXTERNAL
+OFFLINE
+UNAVAILABLE
+```
+
+Never pretend that a non-live source is a live camera.
+
+---
+
+# 4. INDONESIA GEOGRAPHICAL STRUCTURE
+
+Create hierarchical navigation:
+
+```text
+Indonesia
+│
+├── Sumatera
+│   ├── Sumatera Utara
+│   │   ├── Medan
+│   │   ├── Pematangsiantar
+│   │   └── ...
+│   │
+│   ├── Sumatera Barat
+│   ├── Riau
+│   └── ...
+│
+├── Jawa
+│   ├── DKI Jakarta
+│   ├── Jawa Barat
+│   │   ├── Bandung
+│   │   ├── Bekasi
+│   │   ├── Bogor
+│   │   ├── Depok
+│   │   └── ...
+│   │
+│   ├── Jawa Tengah
+│   ├── DI Yogyakarta
+│   └── Jawa Timur
+│
+├── Kalimantan
+├── Sulawesi
+├── Bali
+├── Nusa Tenggara
+├── Maluku
+└── Papua
+```
+
+Do not need to populate every city with fake cameras.
+
+Instead, support the structure so additional CCTV can easily be added later.
+
+---
+
+# 5. MAIN PAGE
+
+Create:
+
+```text
+/
+```
+
+The homepage should feel like the landing page of a serious national CCTV platform.
+
+Hero section:
+
+```text
+CCTV Indonesia
+
+Pantau kamera publik dan kondisi lalu lintas
+di berbagai wilayah Indonesia.
+
+[ 🔍 Cari lokasi, kota, atau kamera ]
+
+[ Jelajahi CCTV ] [ Lihat Peta ]
+```
+
+Include:
+
+- animated subtle background
+- Indonesia map visual
+- camera count
+- cities count
+- online camera count
+- provinces covered
+- live camera indicator
+
+Example:
+
+```text
+1,248
+Cameras
+
+82
+Cities
+
+34
+Provinces
+
+936
+Online
+```
+
+Do NOT use fake statistics if the actual static dataset contains fewer cameras.
+
+Statistics must be dynamically calculated from the static dataset.
+
+---
+
+# 6. FEATURED CCTV
+
+Create a featured section:
+
+```text
+Live CCTV
+Pantau lokasi populer
+
+[Camera Card]
+[Camera Card]
+[Camera Card]
+[Camera Card]
+```
+
+Each card should contain:
+
+- live preview
+- LIVE indicator
+- camera name
+- city
+- province
+- category
+- source
+- favorite button
+- fullscreen button
+- open detail button
+
+Use elegant hover interactions.
+
+---
+
+# 7. EXPLORE BY REGION
+
+Create a region explorer:
+
+```text
+Jelajahi Indonesia
+
+[Sumatera]
+[Java]
+[Kalimantan]
+[Sulawesi]
+[Bali & Nusa Tenggara]
+[Maluku]
+[Papua]
+```
+
+Each region should show:
+
+- number of provinces
+- number of cities
+- number of CCTV
+- online cameras
+
+Clicking a region filters the CCTV list.
+
+---
+
+# 8. CITY EXPLORER
+
+Create:
+
+```text
+CCTV berdasarkan kota
+```
+
+Searchable city cards.
+
+Example:
+
+```text
+Jakarta
+124 CCTV
+
+Bandung
+48 CCTV
+
+Bekasi
+36 CCTV
+
+Surabaya
+72 CCTV
+```
+
+The numbers must be generated from static data.
+
+---
+
+# 9. CCTV EXPLORER PAGE
+
+Create:
+
+```text
+/cctv
+```
+
+This is the main camera discovery page.
+
+Layout:
+
+```text
+┌──────────────────────────────────────────────┐
+│ Search CCTV                                  │
+├──────────────┬───────────────────────────────┤
+│ Filters      │ Camera Grid                   │
+│              │                               │
+│ Province     │ [CCTV] [CCTV] [CCTV]          │
+│ City         │ [CCTV] [CCTV] [CCTV]          │
+│ Category     │ [CCTV] [CCTV] [CCTV]          │
+│ Status       │                               │
+│ Source       │                               │
+└──────────────┴───────────────────────────────┘
+```
+
+Filters:
+
+- Province
+- City
+- District
+- Category
+- Status
+- Source
+- Featured
+- Online
+- Offline
+
+Sorting:
+
+```text
+Popular
+Name A-Z
+Name Z-A
+Recently added
+Online first
+```
+
+---
+
+# 10. SEARCH
+
+Implement instant client-side search.
+
+Search by:
+
+- camera name
+- city
+- province
+- district
+- address
+- category
+- tags
+- source
+
+Example:
+
+```text
+Search "Ahmad Yani"
+```
+
+should find cameras containing:
+
+```text
+Jl. Ahmad Yani
+Ahmad Yani Intersection
+Ahmad Yani Bekasi
+```
+
+Use debouncing for search input.
+
+Show:
+
+```text
+12 cameras found
+```
+
+---
+
+# 11. MAP VIEW
+
+Create:
+
+```text
+/map
+```
+
+Use MapLibre or Leaflet.
+
+Display all CCTV coordinates as markers.
+
+Marker design:
+
+```text
+📹
+```
+
+or custom camera marker.
+
+Marker colors/status:
+
+```text
+Online
+Offline
+Unknown
+```
+
+Clicking marker opens a popup:
+
+```text
+┌──────────────────────────┐
+│ LIVE                     │
+│                          │
+│ CCTV Ahmad Yani          │
+│ Bekasi, Jawa Barat       │
+│                          │
+│ [Open Camera]            │
+└──────────────────────────┘
+```
+
+Support:
+
+- zoom
+- clustering
+- current map bounds
+- city filtering
+- province filtering
+- category filtering
+- fullscreen map
+- map/list split view
+
+---
+
+# 12. MAP + LIST MODE
+
+Create a powerful exploration interface:
+
+```text
+┌─────────────────────┬──────────────────────────┐
+│                     │                          │
+│                     │   CCTV LIST              │
+│       MAP           │                          │
+│                     │   Camera 1               │
+│    📍 📍   📍       │   Camera 2               │
+│         📍          │   Camera 3               │
+│   📍        📍      │   Camera 4               │
+│                     │                          │
+└─────────────────────┴──────────────────────────┘
+```
+
+Users can drag/zoom the map and see cameras within the visible region.
+
+---
+
+# 13. CCTV DETAIL PAGE
+
+Every camera must have:
+
+```text
+/cctv/[slug]
+```
+
+Example:
+
+```text
+/cctv/jl-ahmad-yani-bekasi
+```
+
+Page structure:
+
+```text
+← Back
+
+CCTV Ahmad Yani
+Bekasi, Jawa Barat
+
+┌─────────────────────────────────────────────┐
+│                                             │
+│                  VIDEO                      │
+│                                             │
+│                 ● LIVE                      │
+│                                             │
+└─────────────────────────────────────────────┘
+
+[ ❤️ Favorite ] [ ⛶ Fullscreen ] [ ↗ Source ]
+
+Location
+Jl. Ahmad Yani, Bekasi
+
+Category
+Traffic
+
+Source
+Dishub ...
+
+Coordinates
+-6.xxxxx, 107.xxxxx
+```
+
+---
+
+# 14. VIDEO PLAYER
+
+Create a reusable:
+
+```text
+CCTVPlayer
+```
+
+component.
+
+Support:
+
+### HLS
+
+Use:
+
+```text
+hls.js
+```
+
+when necessary.
+
+### MJPEG
+
+Use:
+
+```html
+<img />
+```
+
+or compatible rendering.
+
+### iframe
+
+Use:
+
+```html
+<iframe />
+```
+
+with security considerations.
+
+### YouTube
+
+Use an embedded player.
+
+### External
+
+Show:
+
+```text
+Stream tersedia di sumber resmi
+
+[Open Source]
+```
+
+---
+
+# 15. VIDEO PLAYER STATES
+
+The player must handle:
+
+```text
+Loading
+Connecting
+Live
+Offline
+Error
+Unavailable
+External source
+```
+
+Example:
+
+```text
+┌─────────────────────────────────┐
+│                                 │
+│       Connecting to camera...   │
+│             ◌                   │
+│                                 │
+└─────────────────────────────────┘
+```
+
+If stream fails:
+
+```text
+Camera unavailable
+
+The source may be temporarily offline.
+
+[Open official source]
+```
+
+Do not show a broken blank iframe.
+
+---
+
+# 16. FULLSCREEN MODE
+
+Allow fullscreen viewing.
+
+Controls:
+
+```text
+⛶ Fullscreen
+🔊 Sound
+↗ Open source
+❤️ Favorite
+```
+
+For CCTV streams that don't contain audio, hide audio controls.
+
+---
+
+# 17. FAVORITES
+
+Since there is no database, implement favorites using:
+
+```text
+localStorage
+```
+
+Users can:
+
+- favorite camera
+- unfavorite camera
+- view favorites
+- persist favorites after refresh
+
+Create:
+
+```text
+/favorites
+```
+
+If there are no favorites:
+
+```text
+Belum ada CCTV favorit
+
+Tambahkan kamera ke favorit untuk
+mengaksesnya dengan cepat.
+```
+
+---
+
+# 18. RECENTLY VIEWED
+
+Use localStorage to store recently opened cameras.
+
+Create:
+
+```text
+Recently viewed
+```
+
+Limit to the latest 10 cameras.
+
+Do not store sensitive information.
+
+---
+
+# 19. RECENT SEARCHES
+
+Store recent searches in localStorage.
+
+Example:
+
+```text
+Recent searches
+
+Ahmad Yani
+Bekasi
+Bandung
+Jakarta
+```
+
+Allow:
+
+```text
+Clear history
+```
+
+---
+
+# 20. CAMERA STATUS
+
+Create status badges:
+
+```text
+● LIVE
+● OFFLINE
+● UNKNOWN
+```
+
+Do not fake health checks.
+
+Because this is frontend-only, status can be:
+
+```text
+static
+```
+
+unless the public source itself provides a reliable status endpoint.
+
+---
+
+# 21. SOURCES
+
+Create a source directory:
+
+```text
+/sources
+```
+
+Show:
+
+```text
+CCTV Sources
+
+DKI Jakarta
+Dishub ...
+
+Bandung
+Dishub ...
+
+Bekasi
+Dishub ...
+
+Kementerian Perhubungan
+...
+```
+
+Each source:
+
+- name
+- official website
+- coverage
+- number of cameras
+- source URL
+
+Clearly attribute every camera to its source.
+
+---
+
+# 22. LEGAL / RESPONSIBLE USE
+
+Create:
+
+```text
+/about
+```
+
+and:
+
+```text
+/terms
+```
+
+Explain that:
+
+- the platform aggregates publicly available camera feeds
+- CCTV content belongs to its respective operators
+- camera availability may change
+- the website does not own the underlying feeds
+- users should respect applicable laws and privacy
+- sources should be credited
+- copyrighted/third-party content should not be redistributed without permission
+
+Do not imply ownership of third-party CCTV footage.
+
+---
+
+# 23. RESPONSIVE DESIGN
+
+Must be fully responsive.
+
+Desktop:
+
+```text
+Sidebar + Grid
+```
+
+Tablet:
+
+```text
+Compact sidebar + Grid
+```
+
+Mobile:
+
+```text
+Bottom navigation
+```
+
+Mobile navigation:
+
+```text
+Home
+Explore
+Map
+Favorites
+More
+```
+
+Camera cards must adapt properly.
+
+---
+
+# 24. DARK MODE
+
+Support:
+
+```text
+Light
+Dark
+System
+```
+
+Use CSS variables/design tokens.
+
+Dark mode should look intentionally designed, not simply inverted.
+
+---
+
+# 25. DESIGN SYSTEM
+
+Design language:
+
+### Inspiration
+
+- Apple Human Interface Guidelines
+- modern map applications
+- premium SaaS dashboards
+- modern transportation platforms
+- minimal editorial interfaces
+
+Avoid:
+
+- generic Bootstrap appearance
+- excessive gradients
+- excessive glassmorphism
+- oversized rounded cards everywhere
+- random colors
+- cheap dashboard aesthetics
+
+Use:
+
+- clean typography
+- generous spacing
+- subtle borders
+- subtle shadows
+- strong hierarchy
+- smooth transitions
+- restrained colors
+
+---
+
+# 26. DESIGN TOKENS
+
+Define tokens:
+
+```css
+--background
+--foreground
+--card
+--card-foreground
+--muted
+--muted-foreground
+--border
+--primary
+--primary-foreground
+--destructive
+--success
+--warning
+```
+
+Do not hardcode colors repeatedly.
+
+---
+
+# 27. COMPONENT ARCHITECTURE
+
+Create reusable components:
+
+```text
+components/
+├── cctv/
+│   ├── CCTVCard.tsx
+│   ├── CCTVGrid.tsx
+│   ├── CCTVList.tsx
+│   ├── CCTVPlayer.tsx
+│   ├── CCTVStatus.tsx
+│   ├── CCTVFilters.tsx
+│   ├── CCTVSearch.tsx
+│   ├── CCTVMap.tsx
+│   ├── CCTVMarker.tsx
+│   ├── CCTVPopup.tsx
+│   ├── CCTVStats.tsx
+│   └── CCTVShare.tsx
+│
+├── map/
+│   ├── MapContainer.tsx
+│   ├── MapControls.tsx
+│   └── MarkerCluster.tsx
+│
+├── layout/
+│   ├── Header.tsx
+│   ├── Sidebar.tsx
+│   ├── MobileNavigation.tsx
+│   └── Footer.tsx
+│
+└── ui/
+```
+
+Avoid giant components.
+
+---
+
+# 28. STATE MANAGEMENT
+
+Use Zustand only where global client state makes sense.
+
+Example:
+
+```text
+useCCTVStore
+```
+
+State:
+
+```ts
+selectedProvince
+selectedCity
+selectedCategory
+selectedStatus
+searchQuery
+viewMode
+favoriteIds
+recentIds
+```
+
+Do not put everything into global state.
+
+Prefer URL search params for shareable filters.
+
+Example:
+
+```text
+/cctv?province=jawa-barat&city=bekasi&category=traffic
+```
+
+---
+
+# 29. URL STATE
+
+Filters should be reflected in the URL.
+
+Example:
+
+```text
+/cctv?
+province=jawa-barat
+&city=bekasi
+&category=traffic
+&status=online
+```
+
+Refreshing the page must preserve the filters.
+
+Users should be able to copy/share filtered URLs.
+
+---
+
+# 30. PERFORMANCE
+
+Optimize heavily.
+
+Requirements:
+
+- lazy-load maps
+- lazy-load video players
+- dynamic import heavy map components
+- virtualize large camera lists if necessary
+- optimize images
+- avoid unnecessary re-renders
+- memoize expensive filtering
+- use React Server Components where appropriate
+- use client components only when needed
+
+Do not load every video stream on the page simultaneously.
+
+Only activate the stream when its card/player becomes visible or selected.
+
+---
+
+# 31. SEO
+
+Every page must have proper metadata.
+
+Homepage:
+
+```text
+CCTV Indonesia — Pantau CCTV Publik Indonesia
+```
+
+Dynamic CCTV pages:
+
+```text
+CCTV Ahmad Yani Bekasi — CCTV Indonesia
+```
+
+Include:
+
+- title
+- description
+- Open Graph
+- Twitter card
+- canonical URL
+
+Generate dynamic metadata for CCTV detail pages.
+
+---
+
+# 32. ACCESSIBILITY
+
+Follow WCAG principles.
+
+Requirements:
+
+- keyboard navigation
+- visible focus states
+- semantic HTML
+- ARIA labels
+- accessible dialogs
+- accessible map controls
+- accessible buttons
+- sufficient contrast
+- reduced motion support
+
+Respect:
+
+```css
+prefers-reduced-motion
+```
+
+---
+
+# 33. ERROR HANDLING
+
+Create:
+
+```text
+error.tsx
+not-found.tsx
+loading.tsx
+```
+
+CCTV detail not found:
+
+```text
+CCTV tidak ditemukan
+
+Kamera yang kamu cari mungkin telah
+dipindahkan atau tidak tersedia.
+
+[ Kembali ke CCTV ]
+```
+
+---
+
+# 34. EMPTY STATES
+
+Every list must have a proper empty state.
+
+Example:
+
+```text
+Tidak ada CCTV ditemukan
+
+Coba ubah filter atau kata pencarian.
+
+[Reset Filter]
+```
+
+---
+
+# 35. SKELETON LOADING
+
+Create skeleton components for:
+
+- camera cards
+- map
+- detail page
+- stats
+- city list
+
+Avoid flashing empty layouts.
+
+---
+
+# 36. TOAST NOTIFICATIONS
+
+Use Sonner.
+
+Examples:
+
+```text
+CCTV ditambahkan ke favorit
+```
+
+```text
+CCTV dihapus dari favorit
+```
+
+```text
+Link berhasil disalin
+```
+
+---
+
+# 37. SHARE
+
+Camera detail page must support:
+
+```text
+Share
+```
+
+Options:
+
+```text
+Copy link
+Share via Web Share API
+```
+
+Fallback to clipboard.
+
+---
+
+# 38. PWA-READY STRUCTURE
+
+Prepare the project so it can later become a PWA.
+
+Include:
+
+- manifest
+- icons
+- mobile metadata
+- installable structure
+
+Do not implement unnecessary offline caching for live CCTV streams.
+
+---
+
+# 39. ADMIN-LIKE DATA MANAGEMENT WITHOUT ADMIN
+
+Since there is no backend, create a developer-friendly static data structure.
+
+Adding a new CCTV should require editing only:
+
+```text
+src/data/cctv.ts
+```
+
+Example:
+
+```ts
+{
+  id: "bekasi-ahmad-yani-01",
+  name: "CCTV Ahmad Yani",
+  slug: "cctv-ahmad-yani-bekasi",
+  province: "Jawa Barat",
+  provinceSlug: "jawa-barat",
+  city: "Bekasi",
+  citySlug: "bekasi",
+  latitude: -6.238,
+  longitude: 106.975,
+  category: "traffic",
+  streamType: "hls",
+  streamUrl: "...",
+  sourceName: "Dishub Kota Bekasi",
+  sourceUrl: "...",
+  status: "online"
+}
+```
+
+No component should need modification when adding a new CCTV.
+
+---
+
+# 40. DATA VALIDATION
+
+Validate CCTV data using Zod.
+
+At development time, invalid data should be easy to detect.
+
+Validate:
+
+- required fields
+- latitude range
+- longitude range
+- valid category
+- valid stream type
+- valid status
+- valid URLs
+
+---
+
+# 41. SAMPLE REALISTIC DATA
+
+Include a small number of clearly identified sample/public sources.
+
+Do not fabricate live URLs.
+
+If a real stream cannot be verified, use:
+
+```ts
+streamType: "external"
+```
+
+and link to the official source.
+
+Create at least enough static data to demonstrate:
+
+- multiple provinces
+- multiple cities
+- multiple categories
+- online/offline/unknown states
+- different stream types
+- different sources
+
+---
+
+# 42. ROUTING
+
+Implement:
+
+```text
+/
+/cctv
+/cctv/[slug]
+/map
+/cities
+/cities/[citySlug]
+/provinces/[provinceSlug]
+/favorites
+/sources
+/about
+/terms
+```
+
+---
+
+# 43. CITY DETAIL
+
+Example:
+
+```text
+/cities/bekasi
+```
+
+Display:
+
+```text
+Bekasi
+Jawa Barat
+
+36 CCTV
+28 Online
+
+[ Map ]
+
+Popular CCTV
+
+[ Camera Grid ]
+```
+
+Include nearby cities.
+
+---
+
+# 44. PROVINCE DETAIL
+
+Example:
+
+```text
+/provinces/jawa-barat
+```
+
+Display:
+
+```text
+Jawa Barat
+
+CCTV
+Cities
+Online Cameras
+
+Cities:
+
+Bekasi
+Bandung
+Bogor
+Depok
+Cirebon
+...
+```
+
+---
+
+# 45. HOME PAGE SECTIONS
+
+Homepage should include:
+
+1. Hero
+2. Search
+3. Live CCTV
+4. Explore map
+5. Popular cities
+6. Browse provinces
+7. CCTV categories
+8. Recently viewed
+9. Official sources
+10. About platform
+11. Footer
+
+---
+
+# 46. CAMERA CARD DESIGN
+
+Camera cards should feel premium.
+
+Example:
+
+```text
+┌─────────────────────────────┐
+│                             │
+│         CCTV PREVIEW        │
+│                             │
+│  ● LIVE                 ♡   │
+├─────────────────────────────┤
+│ Ahmad Yani                  │
+│ Bekasi, Jawa Barat          │
+│                             │
+│ 🚦 Traffic      Dishub      │
+└─────────────────────────────┘
+```
+
+Hover:
+
+- subtle scale
+- preview controls
+- fullscreen
+- open detail
+
+Do not over-animate.
+
+---
+
+# 47. FILTER UX
+
+Desktop:
+
+Left sidebar.
+
+Mobile:
+
+Bottom sheet.
+
+Filter drawer:
+
+```text
+Province
+City
+Category
+Status
+Source
+```
+
+Buttons:
+
+```text
+Reset
+Apply
+```
+
+Show active filter count:
+
+```text
+Filters (3)
+```
+
+---
+
+# 48. SORTING + VIEW MODE
+
+Provide:
+
+```text
+Grid
+List
+Map
+```
+
+Sort:
+
+```text
+Recommended
+Name
+City
+Status
+```
+
+Persist preferred view mode in localStorage.
+
+---
+
+# 49. FAVORITE PAGE
+
+Create a polished favorites page.
+
+Show:
+
+```text
+My Cameras
+
+12 saved cameras
+```
+
+Allow:
+
+- grid/list toggle
+- remove favorite
+- open camera
+- clear all
+
+---
+
+# 50. HEADER
+
+Desktop header:
+
+```text
+CCTV Indonesia
+
+Home
+CCTV
+Map
+Cities
+Sources
+
+[Search]
+
+♡ Favorites
+
+☀ / ☾
+```
+
+Mobile:
+
+```text
+Logo                    🔍
+```
+
+with bottom navigation.
+
+---
+
+# 51. FOOTER
+
+Include:
+
+```text
+CCTV Indonesia
+
+Pantau CCTV publik Indonesia
+dari berbagai sumber resmi.
+
+Explore
+CCTV
+Map
+Cities
+
+Information
+About
+Terms
+Sources
+
+Data
+Public CCTV sources
+
+© 2026 CCTV Indonesia
+```
+
+---
+
+# 52. SECURITY
+
+Even though this is frontend-only:
+
+- sanitize external URLs
+- don't use dangerouslySetInnerHTML unnecessarily
+- validate external URLs
+- use iframe sandbox where appropriate
+- don't expose private credentials
+- never put API keys in source code
+- never scrape authenticated/private CCTV feeds
+- only integrate publicly accessible sources
+
+---
+
+# 53. NO FAKE BACKEND
+
+Do NOT create fake:
+
+```text
+/api/cctv
+/api/cameras
+```
+
+unless absolutely required for Next.js framework behavior.
+
+The application must fundamentally work from static local data.
+
+---
+
+# 54. DEVELOPMENT EXPERIENCE
+
+Create:
+
+```text
+README.md
+```
+
+with:
+
+- installation
+- development
+- build
+- production
+- adding CCTV
+- adding city
+- adding province
+- supported stream types
+- troubleshooting HLS
+- troubleshooting iframe
+- data source guidelines
+
+Example:
+
+```bash
+npm install
+npm run dev
+```
+
+---
+
+# 55. CODE QUALITY
+
+Strict requirements:
+
+- TypeScript strict mode
+- no `any` unless absolutely unavoidable
+- no duplicated CCTV filtering logic
+- reusable utility functions
+- reusable components
+- clean naming
+- clear folder structure
+- proper error handling
+- no console spam
+- no dead code
+- no unnecessary dependencies
+
+---
+
+# 56. IMPORTANT TECHNICAL BOTTLENECK CHECK
+
+Before considering the project complete, audit the entire application for:
+
+- unnecessary client components
+- hydration mismatch
+- excessive re-renders
+- memory leaks from video players
+- multiple HLS instances
+- unmounted video cleanup
+- map memory leaks
+- event listener leaks
+- localStorage access during SSR
+- browser-only API usage during SSR
+- invalid iframe URLs
+- CORS problems
+- mixed-content HTTP streams
+- autoplay restrictions
+- unsupported HLS formats
+- broken external streams
+- duplicate CCTV IDs
+- duplicate slugs
+- invalid coordinates
+- N+1-like client fetch patterns
+- loading all streams simultaneously
+- huge bundle size
+- unnecessary hydration
+- image loading bottlenecks
+- map marker performance
+- large list rendering
+- state synchronization bugs
+- URL filter synchronization bugs
+- localStorage corruption
+- stale state
+- race conditions
+- error boundaries
+- accessibility problems
+- mobile overflow
+- responsive layout issues
+- SEO issues
+- metadata duplication
+
+---
+
+# 57. PERFORMANCE RULE FOR CCTV
+
+NEVER automatically play hundreds of CCTV streams.
+
+Bad:
+
+```text
+100 CCTV cards
+100 active video streams
+```
+
+Good:
+
+```text
+100 CCTV cards
+↓
+lazy preview
+↓
+activate stream only when needed
+```
+
+For grid view, prefer:
+
+```text
+thumbnail
+```
+
+and activate the actual stream when:
+
+- user opens detail
+- user clicks play
+- camera enters a focused viewer
+
+---
+
+# 58. FINAL UI QUALITY BAR
+
+The finished product should look like a combination of:
+
+- premium transportation platform
+- modern map application
+- Apple-style interface
+- professional SaaS dashboard
+
+It must NOT look like:
+
+- school project
+- generic admin dashboard
+- Bootstrap template
+- basic CRUD application
+
+Use polished micro-interactions:
+
+- hover
+- active states
+- skeleton loading
+- smooth filtering
+- map transitions
+- modal transitions
+- favorite animation
+- toast feedback
+
+Keep animations subtle and fast.
+
+---
+
+# 59. IMPLEMENTATION ORDER
+
+Build in this order:
+
+### Phase 1
+Project setup + design system.
+
+### Phase 2
+Static data architecture.
+
+### Phase 3
+Homepage.
+
+### Phase 4
+CCTV explorer.
+
+### Phase 5
+CCTV detail.
+
+### Phase 6
+Video player.
+
+### Phase 7
+Map.
+
+### Phase 8
+Province/city pages.
+
+### Phase 9
+Favorites + recently viewed.
+
+### Phase 10
+Search + URL filters.
+
+### Phase 11
+Responsive/mobile UX.
+
+### Phase 12
+SEO/accessibility.
+
+### Phase 13
+Performance optimization.
+
+### Phase 14
+Final technical audit.
+
+---
+
+# 60. FINAL REQUIREMENT
+
+Do not stop at creating the basic UI.
+
+The result must be a **complete, coherent, production-quality frontend application** where:
+
+- navigation works
+- search works
+- filters work
+- map works
+- camera detail works
+- favorites work
+- recently viewed works
+- URL state works
+- dark mode works
+- responsive layout works
+- CCTV player handles different source types
+- errors are handled
+- loading states exist
+- empty states exist
+- SEO exists
+- accessibility is considered
+- data is centralized
+- adding CCTV requires only editing static data
+- no database is required
+- no backend is required
+
+After implementation, run a full project audit and fix all TypeScript, ESLint, build, hydration, responsive, performance, accessibility, and runtime issues before declaring the project complete.
