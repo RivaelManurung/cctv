@@ -3,10 +3,30 @@
  * robots, JSON-LD and the footer.
  */
 
-/** Override in production with NEXT_PUBLIC_SITE_URL. */
-export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://cctv-indonesia.vercel.app"
-).replace(/\/$/, "");
+/** Used when NEXT_PUBLIC_SITE_URL is unset — see `.env.example`. */
+const DEFAULT_SITE_URL = "https://cctv-indonesia.vercel.app";
+
+/**
+ * Canonical origin of the deployed site.
+ *
+ * `??` is not enough on its own: a variable that is set but empty (or only
+ * whitespace) is not nullish, and an empty string reaches `new URL(SITE_URL)`
+ * in the root layout as `new URL("")` — which throws ERR_INVALID_URL and fails
+ * the whole build at the "collect page data" step. Anything that is not a
+ * usable http(s) origin is treated as unset instead.
+ */
+function resolveSiteUrl(): string {
+  const raw = (process.env.NEXT_PUBLIC_SITE_URL ?? "").trim().replace(/\/+$/, "");
+  if (!raw) return DEFAULT_SITE_URL;
+  try {
+    const { protocol } = new URL(raw);
+    return protocol === "http:" || protocol === "https:" ? raw : DEFAULT_SITE_URL;
+  } catch {
+    return DEFAULT_SITE_URL;
+  }
+}
+
+export const SITE_URL = resolveSiteUrl();
 
 export const SITE_NAME = "CCTV Indonesia";
 
